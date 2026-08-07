@@ -1,0 +1,18 @@
+[submodule "evolver-pi-plugin"]
+	path = evolver-pi-plugin
+	url = https://github.com/CrazyTomatoOo/evolver-pi-plugin.git
+[submodule "pi-bailian-provider"]
+	path = pi-bailian-provider
+	url = https://github.com/CrazyTomatoOo/pi-bailian-provider.git
+[submodule "pi-dynamic-ctx-prune"]
+	path = pi-dynamic-ctx-prune
+	url = https://github.com/CrazyTomatoOo/pi-dynamic-ctx-prune.git
+[submodule "pi-init"]
+	path = pi-init
+	url = https://github.com/CrazyTomatoOo/pi-init.git
+[submodule "pi-powerline-status"]
+	path = pi-powerline-status
+	url = https://github.com/CrazyTomatoOo/pi-powerline-status.git
+[submodule "pi-skill-manager"]
+	path = pi-skill-manager
+	url = https://github.com/CrazyTomatoOo/pi-skill-manager.git

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>第 1 课 · pi-dcp 的三层心智模型</title>
+    <link rel="stylesheet" href="../assets/style.css" />
+  </head>
+  <body>
+    <article>
+      <header class="eyebrow">第 1 课 · pi-dcp 原理</header>
+      <h1>pi-dcp 的三层心智模型</h1>
+      <p>
+        <code>@pi-vault/pi-dcp</code>（v0.5.0，MIT）是 pi
+        的一个上下文管理扩展。要解决的问题是：每个 MCP
+        工具调用都往上下文塞原始数据（一次 Playwright 快照 56 KB，一份日志 45
+        KB），而 pi <em>原生</em>压缩只在
+        <code>contextTokens &gt; contextWindow − reserveTokens</code>（reserve
+        默认 16 k）时才触发——对 1 M 窗口意味着用到 ~984 k 才压，太晚。<a
+          href="../../research/pi-context-api.md"
+          >R2</a
+        >
+        ·
+        <a
+          href="file:///Users/crazytomatooo/.nvm/versions/node/v22.23.1/lib/node_modules/@earendil-works/pi-coding-agent/docs/compaction.md"
+          >compaction.md</a
+        >
+      </p>
+
+      <p>
+        pi-dcp 不替换 pi
+        的压缩管线，它<em>骑</em>在上面，用三件事管上下文。记住这三层，你就有了读它源码的地图。
+      </p>
+
+      <h2>三层机制</h2>
+      <ul class="layers">
+        <li>
+          <span class="tag hard">硬 · 自动</span>
+          <b>① 自动剪枝策略 (automatic pruning)</b><br />
+          <code>dedup</code>（去重重复的工具输出）+ <code>purgeErrors</code>（N
+          轮后清掉失败的旧工具输入）。<em>静默、常开、不靠 agent</em
+          >——直接改消息。<br />
+          <small
+            >源：<code
+              >src/strategies/{deduplication,purge-errors,runner}.ts</code
+            >
+            · <a href="../../research/pi-dcp-mechanism.md">R1 §5</a></small
+          >
+        </li>
+        <li>
+          <span class="tag soft">软 · nudge</span>
+          <b>② Nudge 提醒</b><br />
+          上下文 % 越过阈值（<code>maxContextPercent</code> 80 /
+          <code>minContextPercent</code> 50）时，注入
+          <code>&lt;dcp-system-reminder&gt;</code> 提醒 agent：“你现在必须
+          compress”。<em>靠 agent 响应，可被忽略</em>。<br />
+          <small
+            >源：<code>src/prompts/nudges.ts</code>（CONTEXT_LIMIT_NUDGE /
+            TURN_NUDGE / ITERATION_NUDGE）+
+            <code>src/prompts/system.ts</code> 经
+            <code>before_agent_start</code> 注入 ·
+            <a href="../../research/pi-dcp-mechanism.md">R1 §2–3</a></small
+          >
+        </li>
+        <li>
+          <span class="tag agent">agent · 主动</span>
+          <b>③ compress 工具</b><br />
+          agent 调 <code>compress</code> 工具，对一段消息做
+          <em>range → summary block</em>。<em>由 agent 主动发起</em>，不是
+          pi-dcp 自己跑。<br />
+          <small
+            >源：<code
+              >src/compress/{handler,state,search,protected-content}.ts</code
+            >
+            + <code>src/pipeline.ts</code>（7 步）·
+            <a href="../../research/pi-dcp-mechanism.md">R1 §4</a></small
+          >
+        </li>
+      </ul>
+
+      <div class="insight">
+        <b>关键洞察：pi-dcp 从不硬触发 compaction。</b><br />
+        它在源码里<em>没有</em> <code>compact()</code> /
+        <code>summarize()</code> 调用。<code>context</code> 钩子只是
+        <code>runPipeline → return {messages}</code
+        >（<code>index.ts:462</code>）；<code>session_compact</code> 是 pi
+        <em>已经</em>压缩之后的事后监听（<code>index.ts:323</code>，记
+        “compaction detected”）；连
+        <code>dcp:compress</code> 命令也只是发一条隐藏 follow-up
+        消息（<code>commands/compress.ts:19–26</code>）。所以“真正的压缩”只有两条路：①
+        agent 听 nudge 去调 compress 工具；② pi 原生晚触发兜底。pi-dcp
+        不驱动，只骑在上面。
+      </div>
+
+      <p>
+        <b>附带惊喜</b>：<code>nudgeForce</code>（<code>"soft"</code> |
+        <code>"strong"</code>）是<em>死配置</em>——声明 +
+        校验，但代码从不读它（<code>src/config-schema.ts:91</code>）。所以你把它设成
+        <code>strong</code> 也不会让 nudge 更强，nudge 永远是同一句。
+      </p>
+
+      <div class="quiz">
+        <div class="q">
+          检索练习：pi-dcp 的三层里，哪一层不靠 agent、自动硬剪枝？
+        </div>
+        <details>
+          <summary>先在脑子里答，再点开核对</summary>
+          <p>
+            <span class="ans">① 自动剪枝策略</span>（dedup / purgeErrors）。<br />另外两层都靠
+            agent：② nudge 只是注入提醒，压不压由 agent 决定；③ compress 工具得
+            agent 主动调。<br />这也正是“被动/晚”体验的根因——pi-dcp
+            没有任何一层会自己硬触发压缩。
+          </p>
+        </details>
+      </div>
+
+      <h2>主源</h2>
+      <ul>
+        <li>
+          <a href="../../research/pi-dcp-mechanism.md"
+            >研究写法：pi-dcp 机制（R1，39 KB，带 file:line）</a
+          >——本课所有结论的出处。
+        </li>
+        <li>
+          <a
+            href="file:///Users/crazytomatooo/.pi/agent/npm/node_modules/@pi-vault/pi-dcp/src/index.ts"
+            >pi-dcp 源码入口 <code>src/index.ts</code></a
+          >——去亲手核对每个 <code>pi.on(...)</code> 钩子。
+        </li>
+        <li>
+          <a href="https://github.com/pi-vault/pi-dcp"
+            >上游 github.com/pi-vault/pi-dcp</a
+          >（MIT，Lanh Hoang）。
+        </li>
+      </ul>
+
+      <footer class="next">
+        <p>
+          <b>问老师：</b>任何不清楚的地方直接问——比如“三层怎么互相协作？”“为什么
+          nudge 要分三种？”我都能展开。
+        </p>
+        <p><b>下一课候选</b>（你说想先看哪个我就出哪个）：</p>
+        <ul>
+          <li>
+            <a href="0002-context-event-and-thresholds.html"
+              >context 事件 + 三级阈值算法 <code>isContextOverLimits</code></a
+            >（推荐下一步——解释“何时 nudge”的精确数学）
+          </li>
+          <li>
+            <a href="0003-compress-pipeline.html">compress 管线 7 步</a>（range
+            怎么变成 summary block）
+          </li>
+          <li>
+            <a href="0004-snapshot-persistence.html">跨压缩快照持久化</a>（pi
+            原生压缩后 pi-dcp 怎么恢复状态）
+          </li>
+        </ul>
+      </footer>
+    </article>
+  </body>
+</html>
