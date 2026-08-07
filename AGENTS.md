@@ -4,22 +4,26 @@ Personal collection of extensions for **pi** (`@earendil-works/pi-coding-agent`,
 v0.83.0 installed). Each top-level directory is a **standalone extension** with
 its own `package.json` — there is no root manifest, no workspace, no root build.
 
-**The root is NOT a git repo.** Only `evolver-pi-plugin/` is (its own repo:
-`github.com/CrazyTomatoOo/evolver-pi-plugin`). Version-control operations belong
-inside that subdirectory.
+**The root IS a git repo** (`github.com/CrazyTomatoOo/pi-extensions`). Every
+plugin directory is a **git submodule** — each has its own repo, own `package.json`,
+own `origin`, and its own `AGENTS.md` where present. Work inside a plugin happens
+in that submodule (commit & push there), then bump the superproject's submodule
+pointer. There is no root manifest, no workspace, no root build. Clone recursively
+with `git clone --recursive https://github.com/CrazyTomatoOo/pi-extensions.git`
+(HTTPS URLs in `.gitmodules` — no SSH key needed).
 
 ## Directory Structure
 
 | Dir | What it is |
 | --- | --- |
 | `pi-bailian-provider/` | 阿里云百炼 (DashScope) custom model provider — OpenAI-compatible. Registers `qwen3.7-max`, `qwen3.7-plus`, `glm-5.2` under provider id `bailian`. |
-| `evolver-pi-plugin/` | The largest project: Evolver self-evolving engine port. **Own git repo, own `AGENTS.md` (read it first when working there).** `src/` (10 modules), `scripts/self-check.ts`, `dogfood/` (Docker integration test), `skills/capability-evolver/`, `docs/agents/` + `docs/research/`. |
+| `evolver-pi-plugin/` | The largest project: Evolver self-evolving engine port. **Submodule** (`github.com/CrazyTomatoOo/evolver-pi-plugin`), own `AGENTS.md` (read it first when working there). `src/` (10 modules), `scripts/self-check.ts`, `dogfood/` (Docker integration test), `skills/capability-evolver/`, `docs/agents/` + `docs/research/`. |
 | `pi-powerline-status/` | Powerline-style status bar + Claude-Code-style startup header. One self-contained 30 KB `index.ts` (ported from pi-powerline-footer + pi-claude-code-tui; does NOT depend on them). |
 | `pi-init/` | `/init` + `/init-deep` commands that scan a project and write/improve `AGENTS.md`. Prompt-only — the extension crafts the prompt, pi's agent does the scanning. |
 | `pi-skill-manager/` | `/skills` TUI command to enable/disable skills via checkbox list; persists a disabled-list. |
 | `pi-usage-query/` | `/usage` slash command that queries coding-plan usage across 百炼/Kimi/智谱/DeepSeek/GPT-Plus in one panel (`setWidget` below editor, auto-dismiss on next input). Env-var credentials, fails open. |
-| `pi-dynamic-ctx-prune/` | **Fork of `@pi-vault/pi-dcp` v0.5.0** with forced compression (formerly `pi-dcp-enforcer`). Own `package.json`/`tsconfig`/`biome.json`/`vitest` (cloned verbatim, `.git` stripped — NOT a separate git repo). Unified `limits: { mode, min, max, block }` block — one set of thresholds for BOTH tiers (soft nudge reads min/max, hard `tool_call` block reads block), all read through the single `mode` (`"percent"` default → % of window, `"absolute"` → token count). No silent precedence (fixes the upstream bug where `DEFAULT_CONFIG`'s absolute `200000` shadowed `maxContextPercent`). `enforcer.escapeValve` (default 5) dead-loop guard. Removed dead `compress.nudgeForce`; folded the old scattered fields (`limitMode`/`compress.maxContextPercent`/`maxContextLimit`/`modelMaxLimits`/`enforcer.blockPercent`/`blockTokens`) into `limits`. Verify with `npm install && npx tsc --noEmit && npx vitest run`. |
-| `.evolver/` | Just `workspace-id` (32-hex) — the evolver workspace id for THIS folder. |
+| `pi-dynamic-ctx-prune/` | **Fork of `@pi-vault/pi-dcp` v0.5.0** with forced compression (formerly `pi-dcp-enforcer`). Own `package.json`/`tsconfig`/`biome.json`/`vitest` (originally cloned verbatim — now its own git submodule: `github.com/CrazyTomatoOo/pi-dynamic-ctx-prune`). Unified `limits: { mode, min, max, block }` block — one set of thresholds for BOTH tiers (soft nudge reads min/max, hard `tool_call` block reads block), all read through the single `mode` (`"percent"` default → % of window, `"absolute"` → token count). No silent precedence (fixes the upstream bug where `DEFAULT_CONFIG`'s absolute `200000` shadowed `maxContextPercent`). `enforcer.escapeValve` (default 5) dead-loop guard. Removed dead `compress.nudgeForce`; folded the old scattered fields (`limitMode`/`compress.maxContextPercent`/`maxContextLimit`/`modelMaxLimits`/`enforcer.blockPercent`/`blockTokens`) into `limits`. Verify with `npm install && npx tsc --noEmit && npx vitest run`. |
+| `.evolver/` | Just `workspace-id` (32-hex) — the evolver workspace id for THIS folder. Gitignored (machine-local, not committed). |
 
 Every extension follows the same shape: `export default function (pi: ExtensionAPI)`
 declared under `pi.extensions` in `package.json` (or implied by a single `index.ts`).
