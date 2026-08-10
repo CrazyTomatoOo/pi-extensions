@@ -17,7 +17,7 @@ with `git clone --recursive https://github.com/CrazyTomatoOo/pi-extensions.git`
 | Dir | What it is |
 | --- | --- |
 | `pi-bailian-provider/` | 阿里云百炼 (DashScope) custom model provider — OpenAI-compatible. Registers `qwen3.7-max`, `qwen3.7-plus`, `glm-5.2` under provider id `bailian`. |
-| `evolver-pi-plugin/` | The largest project: Evolver self-evolving engine port. **Submodule** (`github.com/CrazyTomatoOo/evolver-pi-plugin`), own `AGENTS.md` (read it first when working there). `src/` (10 modules), `scripts/self-check.ts`, `dogfood/` (Docker integration test), `skills/capability-evolver/`, `docs/agents/` + `docs/research/`. |
+| `evolver-pi-plugin/` | Evolver self-evolving engine port — **local-only edition** (network layer removed). **Submodule** (`github.com/CrazyTomatoOo/evolver-pi-plugin`), own `AGENTS.md` (read it first when working there). `src/` (7 modules: `index`/`recall`/`signals`/`record`/`memory`/`filter`/`paths`), `scripts/self-check.ts`, `dogfood/` (Docker integration test), `skills/capability-evolver/`, `docs/agents/` + `docs/research/`. |
 | `pi-powerline-status/` | Powerline-style status bar + Claude-Code-style startup header. One self-contained 30 KB `index.ts` (ported from pi-powerline-footer + pi-claude-code-tui; does NOT depend on them). |
 | `pi-init/` | `/init` + `/init-deep` commands that scan a project and write/improve `AGENTS.md`. Prompt-only — the extension crafts the prompt, pi's agent does the scanning. |
 | `pi-skill-manager/` | `/skills` TUI command to enable/disable skills via checkbox list; persists a disabled-list. |
@@ -56,8 +56,7 @@ and exercise the command/UI.
 All extensions wire into pi's extension API (`import type { ExtensionAPI } from
 "@earendil-works/pi-coding-agent"`). Patterns used across the repo:
 
-| `pi.registerCommand` | pi-init (`init`, `init-deep`), pi-skill-manager (`skills`), pi-usage-query (`usage`), evolver (`/evolver:*`) |
-| `pi.registerTool` | evolver (7 `evolver_*` mailbox tools — pi has **no built-in MCP**) |
+| `pi.registerCommand` | pi-init (`init`, `init-deep`), pi-skill-manager (`skills`), pi-usage-query (`usage`) |
 | `pi.registerProvider` | pi-bailian-provider |
 | `pi.on("session_start")` | evolver (recall injection), pi-powerline-status (header), pi-skill-manager |
 | `pi.on("tool_result")` | evolver (signal detection on `write`/`edit`/`replace`) |
@@ -66,9 +65,8 @@ All extensions wire into pi's extension API (`import type { ExtensionAPI } from
 Evolver internals (see `evolver-pi-plugin/AGENTS.md` for the full map):
 `src/index.ts` wires events → `recall.ts` / `signals.ts` / `record.ts`;
 `paths.ts` (forge-resistant `.evolver/workspace-id`), `memory.ts` + `filter.ts`
-(JSONL graph I/O), `proxy.ts` + `tools.ts` + `commands.ts` (network layer,
-degrades gracefully when the Evolver Proxy is down). **Everything fails open —
-handlers never throw.**
+(JSONL graph I/O). **Local-only** — no Proxy/tools/commands; everything
+fails open — handlers never throw.
 
 ## Configuration & Environment
 
@@ -78,8 +76,6 @@ handlers never throw.**
 | `EVOLVER_WORKSPACE_ID` | evolver | Override workspace scoping id. |
 | `EVOLVER_SESSION_STATE_DIR` | evolver | Throttle/dedupe state (default `~/.evolver`). |
 | `EVOLVER_HOOK_LOG_DIR` | evolver | Evolution breadcrumb log (default `~/.evolver/logs`). |
-| `EVOMAP_PROXY_PORT` | evolver | Proxy port fallback (default `19820`; live url from `~/.evolver/settings.json`). |
-| `EVOMAP_HUB_URL` / `EVOMAP_API_KEY` / `EVOMAP_NODE_ID` | evolver | Enable Hub recording from the session-end recorder. |
 | `POWERLINE_NERD_FONTS` | pi-powerline-status | `1`/`0` forces Nerd Font icons on/off (auto-detects Ghostty / `TERM_PROGRAM` otherwise). |
 | `PI_CODING_AGENT_DIR` | pi-powerline-status, pi-skill-manager | pi agent dir override (default `~/.pi/agent`). |
 | `BAILIAN_COOKIE` / `KIMI_API_KEY` / `ZHIPU_API_KEY` / `DEEPSEEK_API_KEY` / `CODEX_OAUTH_TOKEN` | pi-usage-query | Optional env-var overrides. Credentials also storable via `/usage login <provider>` into `credentials.json` (chmod 600). 智谱 key sent **without** Bearer prefix. Optional `*_BASE_URL` overrides.
@@ -96,8 +92,6 @@ handlers never throw.**
   directly — pi's jiti can't resolve the `pi-ai/api/*` subpath export, and
   `openAICompletionsApi` isn't re-exported from the package root. `pi-ai` is
   pinned to pi's bundled version (0.83.0); bump both together.
-- **`typebox` must stay in evolver's `dependencies`** (not dev): `pi install`
-  runs `npm install --omit=dev`, so a dev-only typebox breaks extension load.
 - **Evolver's `memory_graph.jsonl` record shape is a hard external contract** —
   the `@evomap/evolver` engine and Claude/Cursor sibling plugins read it
   byte-compatibly. Never rename fields. Signal keywords, the recall filter, and
@@ -122,7 +116,7 @@ No CI anywhere in this repo. The closest thing is evolver's dogfood Docker test
 ## References
 
 - `evolver-pi-plugin/AGENTS.md` — authoritative for that subproject (architecture table, record-shape contract, dogfood). Read it before touching anything under `evolver-pi-plugin/`.
-- `evolver-pi-plugin/README.md` — install, the 7 `evolver_*` tools, `/evolver:*` commands, env vars.
+- `evolver-pi-plugin/README.md` — install, the three automatic behaviors, env vars.
 - `evolver-pi-plugin/docs/agents/` — issue-tracker (`gh` CLI), triage-labels, domain-doc conventions for that repo.
 - `evolver-pi-plugin/docs/research/` — port research: `reference-internals.md` (upstream plugin internals), `pi-api-mapping.md` (pi API mapping).
 - `pi-init/README.md` — install + usage of `/init` and `/init-deep`.
