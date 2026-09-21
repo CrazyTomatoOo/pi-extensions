@@ -16,3 +16,6 @@
 [submodule "pi-skill-manager"]
 	path = pi-skill-manager
 	url = https://github.com/CrazyTomatoOo/pi-skill-manager.git
+[submodule "codegraph-ext"]
+	path = codegraph-ext
+	url = https://github.com/CrazyTomatoOo/codegraph-ext.git
