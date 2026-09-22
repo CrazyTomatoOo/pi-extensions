@@ -1,32 +1,48 @@
-# Issue tracker: Local Markdown
+# Issue tracker: GitHub
 
-Scoped to the root `pi-extensions` collection. The `evolver-pi-plugin/` subdirectory keeps its own GitHub-tracker setup in `evolver-pi-plugin/docs/agents/`; this file does not apply there.
-
-Issues and specs (you may know a spec as a PRD) for this repo live as markdown files in `.scratch/`.
+Issues and specs for this repo live in GitHub Issues at
+`https://github.com/CrazyTomatoOo/pi-extensions`. Use the `gh` CLI for all
+operations.
 
 ## Conventions
 
-- One feature per directory: `.scratch/<feature-slug>/`
-- The spec is `.scratch/<feature-slug>/spec.md`
-- Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` — never a single combined tickets file
-- Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
-- Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- **Create**: `gh issue create --title "..." --body "..."`.
+- **Read**: `gh issue view <number> --comments`.
+- **List**: `gh issue list --state open --json number,title,body,labels,comments`.
+- **Comment**: `gh issue comment <number> --body "..."`.
+- **Labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`.
+- **Close**: `gh issue close <number> --comment "..."`.
+
+Infer the repository from `git remote -v`; `gh` does this automatically inside
+this checkout.
+
+## Pull requests as a triage surface
+
+**PRs as a request surface: no.** External pull requests are not included in
+the issue triage queue by default.
 
 ## When a skill says "publish to the issue tracker"
 
-Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).
+Create a GitHub issue.
 
 ## When a skill says "fetch the relevant ticket"
 
-Read the file at the referenced path. The user will normally pass the path or the issue number directly.
+Run `gh issue view <number> --comments`.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
+Used by `/wayfinder`. The map is a single GitHub issue with child issues as
+tickets.
 
-- **Map**: `.scratch/<effort>/map.md` — the Notes / Decisions-so-far / Fog body.
-- **Child ticket**: `.scratch/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. A `Type:` line records the ticket type (`research`/`prototype`/`grilling`/`task`); a `Status:` line records `claimed`/`resolved`.
-- **Blocking**: a `Blocked by: NN, NN` line near the top. A ticket is unblocked when every file it lists is `resolved`.
-- **Frontier**: scan `.scratch/<effort>/issues/` for files that are open, unblocked, and unclaimed; first by number wins.
-- **Claim**: set `Status: claimed` and save before any work.
-- **Resolve**: append the answer under an `## Answer` heading, set `Status: resolved`, then append a context pointer (gist + link) to the map's Decisions-so-far in `map.md`.
+- **Map**: one issue labelled `wayfinder:map`, holding Notes,
+  Decisions-so-far, and Fog.
+- **Child ticket**: a GitHub sub-issue labelled
+  `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, or
+  `wayfinder:task`. If sub-issues are unavailable, put `Part of #<map>` at the
+  top of the child body.
+- **Blocking**: use GitHub native issue dependencies where available. Otherwise
+  record `Blocked by: #<n>, #<n>` in the child body.
+- **Frontier**: open, unblocked, unassigned child issues, in map order.
+- **Claim**: assign the ticket to the driving developer before work begins.
+- **Resolve**: comment the answer, close the issue, then append a context
+  pointer to the map's Decisions-so-far.

@@ -127,7 +127,7 @@ No CI anywhere in this repo. The closest thing is evolver's dogfood Docker test
 
 ### Issue tracker
 
-Issues for this collection live as markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Issues for this collection live in GitHub Issues. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
